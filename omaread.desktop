@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Omaread
+GenericName=Markdown Reader
+Comment=Read Markdown with Omawrite's look
+Exec=omaread %f
+Icon=omawrite
+Terminal=false
+Categories=Office;Viewer;
+MimeType=text/markdown;text/x-markdown;
+Keywords=markdown;read;preview;
+StartupWMClass=omaread
