@@ -4,6 +4,8 @@ Omaread is a small, read-only Markdown viewer for Omarchy. It uses the active
 Omarchy theme and the same quiet, monospaced style as Omawrite. Headings, links,
 lists, and tables are rendered for reading rather than shown as Markdown source.
 
+![Omaread showing a Markdown document with search results highlighted](screenshots/omaread-search.png)
+
 When you want to change a document, press `Ctrl+E` or click **EDIT** in the footer.
 Omaread opens the same file in Omawrite and refreshes the reading view after the
 file is saved. Omaread itself never writes to the document.
