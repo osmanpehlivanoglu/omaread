@@ -2,6 +2,7 @@
 #include <QFileInfo>
 #include <QColor>
 #include <QFont>
+#include <QIcon>
 #include <QGuiApplication>
 #include <QApplication>
 #include <QCoreApplication>
@@ -314,6 +315,7 @@ int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("Omaread"));
     app.setDesktopFileName(QStringLiteral("omaread"));
+    app.setWindowIcon(QIcon(QStringLiteral(":/icons/omaread.png")));
     if (argc > 2) {
         qCritical("Usage: omaread [FILE]");
         return 2;

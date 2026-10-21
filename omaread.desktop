@@ -2,9 +2,9 @@
 Type=Application
 Name=Omaread
 GenericName=Markdown Reader
-Comment=Read Markdown with Omawrite's look
+Comment=Read Markdown with Omarchy's look
 Exec=omaread %f
-Icon=omawrite
+Icon=omaread
 Terminal=false
 Categories=Office;Viewer;
 MimeType=text/markdown;text/x-markdown;

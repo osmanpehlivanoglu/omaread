@@ -15,9 +15,9 @@ file is saved. Omaread itself never writes to the document.
 - Qt 6 Base and Qt 6 Declarative, including Widgets, Print Support, Quick Controls, and the QML dialogs
 - `qmake6` and a C++17 compiler to build from source
 - [iA Writer Mono S](https://github.com/iaolo/iA-Fonts) for the intended typography
-- Omawrite for the optional edit action and its application icon
+- Omawrite for the optional edit action
 
-The viewer can run without Omawrite; only the edit action and icon depend on it.
+The viewer can run without Omawrite; only the edit action depends on it.
 Without the iA Writer font, Qt uses an installed fallback font.
 
 ## Build and run
@@ -38,6 +38,7 @@ Make sure `~/.local/bin` is in your desktop session's `PATH`, then run:
 ```sh
 install -Dm755 omaread "$HOME/.local/bin/omaread"
 install -Dm644 omaread.desktop "$HOME/.local/share/applications/omaread.desktop"
+install -Dm644 icons/omaread.svg "$HOME/.local/share/icons/hicolor/scalable/apps/omaread.svg"
 ```
 
 To make it the default Markdown viewer:
@@ -68,8 +69,9 @@ Search highlights every match and shows the current match number. Print opens
 the system dialog and prints rendered Markdown. Omaread watches the open file
 for changes once per second. It only opens local files and reads them as UTF-8.
 
-The folder icon design is adapted from the MIT-licensed
-[Omawrite](https://github.com/omacom/omawrite) project. Omaread does not bundle
+Omaread is an independent project inspired by the MIT-licensed
+[Omawrite](https://github.com/omacom/omawrite). The small folder button follows
+Omawrite's design; the Omaread app icon is original. Omaread does not bundle
 Omawrite or the iA Writer font.
 
 ## License
