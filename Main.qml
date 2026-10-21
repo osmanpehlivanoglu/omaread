@@ -19,12 +19,16 @@ ApplicationWindow {
     property real zoom: 1
     property var searchMatches: []
     property int searchIndex: -1
-    readonly property int bodySize: Math.round(20 * zoom)
+    readonly property int bodySize: scaledSize(20 * zoom)
     readonly property color muted: reader.darkMode ? "#909191" : "#aeb1b5"
+
+    function scaledSize(pixels) {
+        return Math.max(1, Math.round(pixels * reader.textScale))
+    }
 
     FontMetrics {
         id: fontMetrics
-        font.family: "iA Writer Mono S"
+        font.family: reader.fontFamily
         font.pixelSize: win.bodySize
     }
 
@@ -120,26 +124,26 @@ ApplicationWindow {
     Flickable {
         id: page
         anchors.fill: parent
-        anchors.leftMargin: 24
-        anchors.rightMargin: 24
+        anchors.leftMargin: win.scaledSize(24)
+        anchors.rightMargin: win.scaledSize(24)
         clip: true
         contentWidth: width
-        contentHeight: Math.max(height, document.y + document.implicitHeight + 220)
+        contentHeight: Math.max(height, document.y + document.implicitHeight + win.scaledSize(220))
         boundsBehavior: Flickable.StopAtBounds
         ScrollBar.vertical: ScrollBar {
             policy: ScrollBar.AsNeeded
-            bottomPadding: 32
-            bottomInset: 32
+            bottomPadding: win.scaledSize(32)
+            bottomInset: win.scaledSize(32)
         }
 
         TextEdit {
             id: document
             objectName: "document"
             x: Math.round((page.width - width) / 2)
-            y: Math.max(42, Math.round(win.height * 0.05))
+            y: Math.max(win.scaledSize(42), Math.round(win.height * 0.05))
             width: Math.min(Math.round(fontMetrics.averageCharacterWidth * 65),
                             Math.max(360, win.width - Math.round(fontMetrics.averageCharacterWidth * 20)))
-            height: Math.max(page.height - y - 96, implicitHeight + 20)
+            height: Math.max(page.height - y - win.scaledSize(96), implicitHeight + win.scaledSize(20))
             text: reader.content
             textFormat: TextEdit.MarkdownText
             baseUrl: reader.fileUrl
@@ -150,7 +154,7 @@ ApplicationWindow {
             color: reader.foreground
             selectionColor: reader.selection
             selectedTextColor: reader.foreground
-            font.family: "iA Writer Mono S"
+            font.family: reader.fontFamily
             font.pixelSize: win.bodySize
             renderType: Screen.devicePixelRatio % 1 === 0 ? TextEdit.NativeRendering : TextEdit.QtRendering
             onLinkActivated: function(link) { Qt.openUrlExternally(link) }
@@ -176,7 +180,7 @@ ApplicationWindow {
                 height: textPosition.height
                 horizontalAlignment: Text.AlignRight
                 color: reader.darkMode ? "#4f525a" : "#aeb1b5"
-                font.family: "iA Writer Mono S"
+                font.family: reader.fontFamily
                 font.pixelSize: win.bodySize
                 Rectangle { anchors.fill: parent; color: reader.background; z: -1 }
             }
@@ -191,18 +195,18 @@ ApplicationWindow {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.topMargin: 12
-        anchors.leftMargin: 12
-        anchors.rightMargin: 12
-        height: 56
-        radius: 9
+        anchors.topMargin: win.scaledSize(12)
+        anchors.leftMargin: win.scaledSize(12)
+        anchors.rightMargin: win.scaledSize(12)
+        height: win.scaledSize(56)
+        radius: win.scaledSize(9)
         color: reader.darkMode ? "#22221f" : "#fffef2"
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 16
-            anchors.rightMargin: 8
-            spacing: 8
+            anchors.leftMargin: win.scaledSize(16)
+            anchors.rightMargin: win.scaledSize(8)
+            spacing: win.scaledSize(8)
 
             Item {
                 Layout.fillWidth: true
@@ -217,8 +221,8 @@ ApplicationWindow {
                     color: reader.darkMode ? "#aab9de" : "#62635f"
                     selectionColor: reader.selection
                     selectedTextColor: reader.foreground
-                    font.family: "iA Writer Mono S"
-                    font.pixelSize: 17
+                    font.family: reader.fontFamily
+                    font.pixelSize: win.scaledSize(17)
                     onTextChanged: win.updateSearch()
                     Keys.onPressed: function(event) {
                         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
@@ -232,30 +236,30 @@ ApplicationWindow {
                     text: "Find"
                     visible: searchField.text.length === 0
                     color: win.muted
-                    font.family: "iA Writer Mono S"
-                    font.pixelSize: 17
+                    font.family: reader.fontFamily
+                    font.pixelSize: win.scaledSize(17)
                 }
             }
             Text {
-                Layout.preferredWidth: 58
+                Layout.preferredWidth: win.scaledSize(58)
                 Layout.fillHeight: true
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
                 text: win.searchMatches.length ? (win.searchIndex + 1) + "/" + win.searchMatches.length : "0/0"
                 color: reader.darkMode ? "#aab9de" : "#62635f"
-                font.family: "iA Writer Mono S"
-                font.pixelSize: 16
+                font.family: reader.fontFamily
+                font.pixelSize: win.scaledSize(16)
             }
             Rectangle {
                 Layout.preferredWidth: 1
-                Layout.preferredHeight: 34
+                Layout.preferredHeight: win.scaledSize(34)
                 color: reader.darkMode ? "#6f6f62" : "#d5d56e"
             }
             Repeater {
                 model: ["up", "down", "close"]
                 delegate: Item {
                     required property string modelData
-                    Layout.preferredWidth: 40
+                    Layout.preferredWidth: win.scaledSize(40)
                     Layout.fillHeight: true
                     Canvas {
                         anchors.centerIn: parent
@@ -302,16 +306,16 @@ ApplicationWindow {
         visible: reader.content.length === 0 && reader.status.length === 0
         text: "Open a Markdown file  ·  Ctrl+O"
         color: win.muted
-        font.family: "iA Writer Mono S"
-        font.pixelSize: 14
+        font.family: reader.fontFamily
+        font.pixelSize: win.scaledSize(14)
     }
 
     Row {
         anchors.left: parent.left
         anchors.bottom: parent.bottom
-        anchors.leftMargin: 12
-        anchors.bottomMargin: 10
-        spacing: 12
+        anchors.leftMargin: win.scaledSize(12)
+        anchors.bottomMargin: win.scaledSize(10)
+        spacing: win.scaledSize(12)
         opacity: 0.55
         Item {
             width: 16
@@ -352,9 +356,9 @@ ApplicationWindow {
             text: "EDIT"
             visible: reader.hasFile
             color: win.muted
-            font.family: "iA Writer Mono S"
-            font.pixelSize: 11
-            height: 16
+            font.family: reader.fontFamily
+            font.pixelSize: win.scaledSize(11)
+            height: win.scaledSize(16)
             verticalAlignment: Text.AlignVCenter
             MouseArea {
                 anchors.fill: parent
@@ -366,10 +370,10 @@ ApplicationWindow {
             text: reader.status
             visible: text.length > 0
             color: win.muted
-            font.family: "iA Writer Mono S"
-            font.pixelSize: 11
+            font.family: reader.fontFamily
+            font.pixelSize: win.scaledSize(11)
             width: Math.min(360, win.width / 3)
-            height: 16
+            height: win.scaledSize(16)
             verticalAlignment: Text.AlignVCenter
             elide: Text.ElideRight
         }
@@ -378,12 +382,12 @@ ApplicationWindow {
     Text {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        anchors.rightMargin: 12
-        anchors.bottomMargin: 10
+        anchors.rightMargin: win.scaledSize(12)
+        anchors.bottomMargin: win.scaledSize(10)
         text: reader.wordCount + (reader.wordCount === 1 ? " Word" : " Words")
         color: win.muted
         opacity: 0.75
-        font.family: "iA Writer Mono S"
-        font.pixelSize: 11
+        font.family: reader.fontFamily
+        font.pixelSize: win.scaledSize(11)
     }
 }

@@ -1,5 +1,6 @@
-QT += quick quickcontrols2 widgets printsupport
+QT += quick quickcontrols2 widgets printsupport dbus
 CONFIG += c++17
-SOURCES += main.cpp
+SOURCES += main.cpp systemtheme.cpp
+HEADERS += systemtheme.h
 RESOURCES += resources.qrc
 TARGET = omaread

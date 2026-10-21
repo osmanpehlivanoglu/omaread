@@ -2,6 +2,7 @@
 #include <QFileInfo>
 #include <QColor>
 #include <QFont>
+#include <QFontDatabase>
 #include <QIcon>
 #include <QGuiApplication>
 #include <QApplication>
@@ -13,6 +14,7 @@
 #include <QPrintDialog>
 #include <QPrinter>
 #include <QRegularExpression>
+#include <QSettings>
 #include <QSet>
 #include <QTextBlock>
 #include <QTextCursor>
@@ -25,7 +27,10 @@
 #include <QTimer>
 #include <QUrl>
 #include <QDir>
+#include <QFileSystemWatcher>
 #include <functional>
+
+#include "systemtheme.h"
 
 class SearchHighlighter : public QSyntaxHighlighter {
 public:
@@ -80,11 +85,26 @@ class Reader : public QObject {
     Q_PROPERTY(QString accent READ accent NOTIFY changed)
     Q_PROPERTY(QString selection READ selection NOTIFY changed)
     Q_PROPERTY(bool darkMode READ darkMode NOTIFY changed)
+    Q_PROPERTY(qreal textScale READ textScale NOTIFY textScaleChanged)
+    Q_PROPERTY(QString fontFamily READ fontFamily NOTIFY fontFamilyChanged)
     Q_PROPERTY(QVariantList markers READ markers NOTIFY markersChanged)
 public:
-    Reader() {
+    explicit Reader(bool systemDarkMode) : systemDark(systemDarkMode) {
+        loadFont();
         loadTheme();
+        themeReloadTimer.setSingleShot(true);
+        themeReloadTimer.setInterval(100);
+        connect(&themeReloadTimer, &QTimer::timeout, this, [this] {
+            loadTheme();
+            watchTheme();
+        });
+        connect(&themeWatcher, &QFileSystemWatcher::fileChanged,
+                &themeReloadTimer, qOverload<>(&QTimer::start));
+        connect(&themeWatcher, &QFileSystemWatcher::directoryChanged,
+                &themeReloadTimer, qOverload<>(&QTimer::start));
+        watchTheme();
         connect(&poller, &QTimer::timeout, this, [this] {
+            loadFont();
             loadTheme();
             if (!path.isEmpty()) loadFile(path, false);
         });
@@ -107,7 +127,20 @@ public:
     QString accent() const { return highlight; }
     QString selection() const { return select; }
     bool darkMode() const { return dark; }
+    qreal textScale() const { return scale; }
+    QString fontFamily() const { return chosenFont; }
     QVariantList markers() const { return listMarkers; }
+
+    void setSystemDarkMode(bool value) {
+        if (systemDark == value) return;
+        systemDark = value;
+        loadTheme();
+    }
+    void setTextScale(qreal value) {
+        if (qFuzzyCompare(scale, value)) return;
+        scale = value;
+        emit textScaleChanged();
+    }
 
     Q_INVOKABLE void open(const QUrl &url) {
         if (!url.isLocalFile()) {
@@ -139,7 +172,7 @@ public:
         dialog.setWindowTitle(QStringLiteral("Print %1").arg(fileName()));
         if (dialog.exec() != QDialog::Accepted) return;
         QTextDocument printable;
-        printable.setDefaultFont(QFont(QStringLiteral("iA Writer Mono S"), 12));
+        printable.setDefaultFont(QFont(chosenFont, 12));
         printable.setBaseUrl(QUrl::fromLocalFile(path));
         printable.setMarkdown(text);
         printable.print(&printer);
@@ -210,7 +243,7 @@ public:
                 if (!fragment.isValid()) continue;
                 QTextCharFormat format = fragment.charFormat();
                 format.setForeground(fragment.charFormat().isAnchor() ? link : body);
-                format.setFontFamilies({QStringLiteral("iA Writer Mono S")});
+                format.setFontFamilies({chosenFont});
                 format.clearProperty(QTextFormat::FontSizeAdjustment);
                 format.setProperty(QTextFormat::FontPixelSize, textSize);
                 if (fragment.charFormat().isAnchor()) format.setFontUnderline(true);
@@ -246,9 +279,25 @@ public:
 
 signals:
     void changed();
+    void textScaleChanged();
+    void fontFamilyChanged();
     void markersChanged();
 
 private:
+    void loadFont() {
+        const QString saved = QSettings(QSettings::NativeFormat, QSettings::UserScope,
+                                        QStringLiteral("Omacom"), QStringLiteral("omawrite"))
+                                  .value(QStringLiteral("editor/font")).toString();
+        const QString preferred = QStringLiteral("iA Writer Mono S");
+        const QString next = !saved.isEmpty() && QFontDatabase::hasFamily(saved)
+            ? saved
+            : QFontDatabase::hasFamily(preferred)
+                ? preferred : QFontDatabase::systemFont(QFontDatabase::FixedFont).family();
+        if (chosenFont == next) return;
+        chosenFont = next;
+        emit fontFamilyChanged();
+        QTimer::singleShot(0, this, [this] { styleDocument(styledPixelSize); });
+    }
     void loadFile(const QString &filePath, bool force) {
         QFileInfo info(filePath);
         if (!force && info.exists() && info.lastModified() == stamp && info.size() == size) return;
@@ -271,8 +320,10 @@ private:
     void loadTheme() {
         const QString themePath = QDir::homePath() + QStringLiteral("/.local/state/omarchy/current/theme/colors.toml");
         QFile file(themePath);
-        QString newBg = QStringLiteral("#101010"), newFg = QStringLiteral("#eeeeee");
-        QString newAccent = QStringLiteral("#5584aa"), newSelection = QStringLiteral("#186a9a");
+        QString newBg = systemDark ? QStringLiteral("#101010") : QStringLiteral("#ffffff");
+        QString newFg = systemDark ? QStringLiteral("#eeeeee") : QStringLiteral("#222324");
+        QString newAccent = systemDark ? QStringLiteral("#5584aa") : QStringLiteral("#2077b2");
+        QString newSelection = systemDark ? QStringLiteral("#186a9a") : QStringLiteral("#2077b2");
         QString mode;
         if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
             while (!file.atEnd()) {
@@ -290,18 +341,40 @@ private:
                 else if (key == QStringLiteral("selection")) newSelection = value;
             }
         }
-        const bool newDark = mode == QStringLiteral("dark") || (mode != QStringLiteral("light") && QColor(newBg).lightnessF() < 0.5);
+        bool newDark = systemDark;
+        if (mode == QStringLiteral("dark")) newDark = true;
+        else if (mode == QStringLiteral("light")) newDark = false;
+        else if (QColor(newBg).isValid()) {
+            const QColor background(newBg);
+            newDark = 0.299 * background.redF() + 0.587 * background.greenF()
+                    + 0.114 * background.blueF() < 0.5;
+        }
         if (bg == newBg && fg == newFg && highlight == newAccent && select == newSelection && dark == newDark) return;
         bg = newBg; fg = newFg; highlight = newAccent; select = newSelection; dark = newDark;
         if (searchHighlighter) searchHighlighter->setSearch(searchQuery, searchCurrent, dark);
         emit changed();
         QTimer::singleShot(0, this, [this] { styleDocument(styledPixelSize); });
     }
+    void watchTheme() {
+        const QStringList watched = themeWatcher.files() + themeWatcher.directories();
+        if (!watched.isEmpty()) themeWatcher.removePaths(watched);
+        const QString current = QDir::homePath() + QStringLiteral("/.local/state/omarchy/current");
+        const QString theme = current + QStringLiteral("/theme");
+        const QString colors = theme + QStringLiteral("/colors.toml");
+        if (QDir(current).exists()) themeWatcher.addPath(current);
+        if (QDir(theme).exists()) themeWatcher.addPath(theme);
+        if (QFile::exists(colors)) themeWatcher.addPath(colors);
+    }
     QString path, text, message, bg, fg, highlight, select;
     QDateTime stamp;
     qint64 size = -1;
     bool dark = true;
+    bool systemDark = true;
+    qreal scale = 1.0;
+    QString chosenFont;
     QTimer poller;
+    QFileSystemWatcher themeWatcher;
+    QTimer themeReloadTimer;
     QPointer<QTextDocument> document;
     QPointer<SearchHighlighter> searchHighlighter;
     QString searchQuery;
@@ -320,7 +393,25 @@ int main(int argc, char *argv[]) {
         qCritical("Usage: omaread [FILE]");
         return 2;
     }
-    Reader reader;
+    SystemTheme systemTheme(&app);
+    Reader reader(systemTheme.darkMode());
+    const qreal basePointSize = app.font().pointSizeF() > 0 ? app.font().pointSizeF() : 12.0;
+    const auto applyInterfaceFont = [&app, &reader, basePointSize]() {
+        QFont scaled(reader.fontFamily());
+        scaled.setPointSizeF(basePointSize * reader.textScale());
+        app.setFont(scaled);
+    };
+    reader.setTextScale(systemTheme.textScale());
+    applyInterfaceFont();
+    QObject::connect(&reader, &Reader::fontFamilyChanged,
+                     &app, applyInterfaceFont);
+    QObject::connect(&systemTheme, &SystemTheme::darkModeChanged,
+                     &reader, &Reader::setSystemDarkMode);
+    QObject::connect(&systemTheme, &SystemTheme::textScaleChanged, &reader,
+                     [&reader, applyInterfaceFont](qreal value) {
+        reader.setTextScale(value);
+        applyInterfaceFont();
+    });
     if (argc == 2) reader.open(QUrl::fromLocalFile(QFileInfo(QString::fromLocal8Bit(argv[1])).absoluteFilePath()));
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("reader"), &reader);

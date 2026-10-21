@@ -2,6 +2,7 @@
 Makefile
 *.o
 *.moc
+moc_*.cpp
 moc_predefs.h
 qrc_*.cpp
 omaread

@@ -14,11 +14,10 @@ file is saved. Omaread itself never writes to the document.
 
 - Qt 6 Base and Qt 6 Declarative, including Widgets, Print Support, Quick Controls, and the QML dialogs
 - `qmake6` and a C++17 compiler to build from source
-- [iA Writer Mono S](https://github.com/iaolo/iA-Fonts) for the intended typography
 - Omawrite for the optional edit action
 
 The viewer can run without Omawrite; only the edit action depends on it.
-Without the iA Writer font, Qt uses an installed fallback font.
+Theme colors and desktop text size update automatically when Omarchy changes.
 
 ## Build and run
 
@@ -75,12 +74,11 @@ We love Omawrite's focused writing experience, so we built Omaread as a
 read-only companion for the times we just want to read. Omaread is an
 independent community project, not an official Omawrite or Omarchy app.
 
-The search bar layout and small folder button are adapted from the
-MIT-licensed [Omawrite](https://github.com/omacom/omawrite). The typography,
-theme integration, and keyboard shortcuts follow its approach. Omaread has its
-own Markdown rendering and read-only behavior, and its app icon is original.
-The [license](LICENSE) retains Omawrite's copyright notice. Omaread does not
-bundle Omawrite or the iA Writer font.
+The search bar layout, small folder button, and desktop theme/scale integration
+are adapted from the MIT-licensed [Omawrite](https://github.com/omacom/omawrite).
+The typography and keyboard shortcuts follow its approach. Omaread has its own
+Markdown rendering and read-only behavior, and its app icon is original. The
+[license](LICENSE) retains Omawrite's copyright notice.
 
 ## License
 
