@@ -10,7 +10,7 @@ file is saved. Omaread itself never writes to the document.
 
 ## Requirements
 
-- Qt 6 Base and Qt 6 Declarative, including Quick Controls and the QML dialogs
+- Qt 6 Base and Qt 6 Declarative, including Widgets, Print Support, Quick Controls, and the QML dialogs
 - `qmake6` and a C++17 compiler to build from source
 - [iA Writer Mono S](https://github.com/iaolo/iA-Fonts) for the intended typography
 - Omawrite for the optional edit action and its application icon
@@ -49,14 +49,22 @@ xdg-mime default omaread.desktop text/markdown text/x-markdown
 | Shortcut | Action |
 | --- | --- |
 | `Ctrl+O` | Open a file |
+| `Ctrl+N` | Open a new Omaread window |
 | `Ctrl+E` | Edit the open file in Omawrite |
+| `Ctrl+P` | Print the rendered document |
+| `Ctrl+F` | Find text in the open file |
+| `Enter` / `Shift+Enter` | Next / previous match while searching |
+| `Ctrl+G` / `Ctrl+Shift+G` | Next / previous match while searching |
+| `Escape` | Close search |
 | `Ctrl+R` | Reload the file |
 | `Ctrl+=` / `Ctrl+-` | Zoom in / out |
 | `Ctrl+0` | Reset zoom |
 | `F11` / `Super+F` | Toggle fullscreen |
+| `Ctrl+?` / `F1` | Show keyboard shortcuts |
 
-Omaread watches the open file for changes once per second. It only opens local
-files and reads them as UTF-8.
+Search highlights every match and shows the current match number. Print opens
+the system dialog and prints rendered Markdown. Omaread watches the open file
+for changes once per second. It only opens local files and reads them as UTF-8.
 
 The folder icon design is adapted from the MIT-licensed
 [Omawrite](https://github.com/omacom/omawrite) project. Omaread does not bundle

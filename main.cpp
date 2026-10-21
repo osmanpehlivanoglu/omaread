@@ -1,11 +1,16 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QColor>
+#include <QFont>
 #include <QGuiApplication>
+#include <QApplication>
+#include <QCoreApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickTextDocument>
 #include <QProcess>
+#include <QPrintDialog>
+#include <QPrinter>
 #include <QRegularExpression>
 #include <QSet>
 #include <QTextBlock>
@@ -14,11 +19,52 @@
 #include <QTextFrame>
 #include <QTextFragment>
 #include <QTextList>
+#include <QSyntaxHighlighter>
 #include <QTextTable>
 #include <QTimer>
 #include <QUrl>
 #include <QDir>
 #include <functional>
+
+class SearchHighlighter : public QSyntaxHighlighter {
+public:
+    explicit SearchHighlighter(QTextDocument *document) : QSyntaxHighlighter(document) {}
+
+    void setSearch(const QString &text, int currentStart, bool darkMode) {
+        if (query == text && selectedStart == currentStart && dark == darkMode) return;
+        const bool sameQuery = query == text && dark == darkMode;
+        const int previousStart = selectedStart;
+        query = text;
+        selectedStart = currentStart;
+        dark = darkMode;
+        if (!sameQuery) {
+            rehighlight();
+        } else {
+            if (previousStart >= 0) rehighlightBlock(document()->findBlock(previousStart));
+            if (selectedStart >= 0 && document()->findBlock(selectedStart) != document()->findBlock(previousStart))
+                rehighlightBlock(document()->findBlock(selectedStart));
+        }
+    }
+
+protected:
+    void highlightBlock(const QString &text) override {
+        if (query.isEmpty()) return;
+        int from = 0;
+        while ((from = text.indexOf(query, from, Qt::CaseInsensitive)) >= 0) {
+            QTextCharFormat format;
+            const bool current = currentBlock().position() + from == selectedStart;
+            format.setBackground(QColor(current ? (dark ? "#b36b20" : "#ffad42")
+                                                : (dark ? "#725b18" : "#ffe58a")));
+            setFormat(from, query.size(), format);
+            from += query.size();
+        }
+    }
+
+private:
+    QString query;
+    int selectedStart = -1;
+    bool dark = true;
+};
 
 class Reader : public QObject {
     Q_OBJECT
@@ -78,9 +124,48 @@ public:
             emit changed();
         }
     }
+    Q_INVOKABLE void newWindow() {
+        if (!QProcess::startDetached(QCoreApplication::applicationFilePath(), {})) {
+            message = QStringLiteral("Could not open a new window");
+            emit changed();
+        }
+    }
+    Q_INVOKABLE void printDocument() {
+        if (!document || path.isEmpty()) return;
+        QPrinter printer(QPrinter::HighResolution);
+        printer.setDocName(fileName());
+        QPrintDialog dialog(&printer);
+        dialog.setWindowTitle(QStringLiteral("Print %1").arg(fileName()));
+        if (dialog.exec() != QDialog::Accepted) return;
+        QTextDocument printable;
+        printable.setDefaultFont(QFont(QStringLiteral("iA Writer Mono S"), 12));
+        printable.setBaseUrl(QUrl::fromLocalFile(path));
+        printable.setMarkdown(text);
+        printable.print(&printer);
+    }
     Q_INVOKABLE void attachDocument(QObject *quickDocument) {
         auto *wrapper = qobject_cast<QQuickTextDocument *>(quickDocument);
         document = wrapper ? wrapper->textDocument() : nullptr;
+        if (document) searchHighlighter = new SearchHighlighter(document);
+    }
+    Q_INVOKABLE QVariantList findAllText(const QString &query) const {
+        QVariantList matches;
+        if (!document || query.isEmpty()) return matches;
+        for (QTextBlock block = document->begin(); block.isValid(); block = block.next()) {
+            const QString text = block.text();
+            int from = 0;
+            while ((from = text.indexOf(query, from, Qt::CaseInsensitive)) >= 0) {
+                matches.append(QVariantMap{{QStringLiteral("start"), block.position() + from},
+                                           {QStringLiteral("end"), block.position() + from + query.size()}});
+                from += query.size();
+            }
+        }
+        return matches;
+    }
+    Q_INVOKABLE void highlightSearch(const QString &query, int currentStart) {
+        searchQuery = query;
+        searchCurrent = currentStart;
+        if (searchHighlighter) searchHighlighter->setSearch(query, currentStart, dark);
     }
     Q_INVOKABLE void styleDocument(int pixelSize) {
         if (!document || styling) return;
@@ -207,6 +292,7 @@ private:
         const bool newDark = mode == QStringLiteral("dark") || (mode != QStringLiteral("light") && QColor(newBg).lightnessF() < 0.5);
         if (bg == newBg && fg == newFg && highlight == newAccent && select == newSelection && dark == newDark) return;
         bg = newBg; fg = newFg; highlight = newAccent; select = newSelection; dark = newDark;
+        if (searchHighlighter) searchHighlighter->setSearch(searchQuery, searchCurrent, dark);
         emit changed();
         QTimer::singleShot(0, this, [this] { styleDocument(styledPixelSize); });
     }
@@ -216,13 +302,16 @@ private:
     bool dark = true;
     QTimer poller;
     QPointer<QTextDocument> document;
+    QPointer<SearchHighlighter> searchHighlighter;
+    QString searchQuery;
+    int searchCurrent = -1;
     bool styling = false;
     int styledPixelSize = 20;
     QVariantList listMarkers;
 };
 
 int main(int argc, char *argv[]) {
-    QGuiApplication app(argc, argv);
+    QApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("Omaread"));
     app.setDesktopFileName(QStringLiteral("omaread"));
     if (argc > 2) {
