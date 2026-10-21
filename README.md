@@ -69,10 +69,18 @@ Search highlights every match and shows the current match number. Print opens
 the system dialog and prints rendered Markdown. Omaread watches the open file
 for changes once per second. It only opens local files and reads them as UTF-8.
 
-Omaread is an independent project inspired by the MIT-licensed
-[Omawrite](https://github.com/omacom/omawrite). The small folder button follows
-Omawrite's design; the Omaread app icon is original. Omaread does not bundle
-Omawrite or the iA Writer font.
+## Omawrite and attribution
+
+We love Omawrite's focused writing experience, so we built Omaread as a
+read-only companion for the times we just want to read. Omaread is an
+independent community project, not an official Omawrite or Omarchy app.
+
+The search bar layout and small folder button are adapted from the
+MIT-licensed [Omawrite](https://github.com/omacom/omawrite). The typography,
+theme integration, and keyboard shortcuts follow its approach. Omaread has its
+own Markdown rendering and read-only behavior, and its app icon is original.
+The [license](LICENSE) retains Omawrite's copyright notice. Omaread does not
+bundle Omawrite or the iA Writer font.
 
 ## License
 
