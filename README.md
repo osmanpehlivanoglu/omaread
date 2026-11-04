@@ -3,6 +3,7 @@
 Omaread is a small, read-only Markdown viewer for Omarchy. It uses the active
 Omarchy theme and the same quiet, monospaced style as Omawrite. Headings, links,
 lists, and tables are rendered for reading rather than shown as Markdown source.
+Inline `$\rightarrow$` is displayed as `→`; code spans and fenced code remain literal.
 
 ![Omaread showing a Markdown document with search results highlighted](screenshots/omaread-search.png)
 

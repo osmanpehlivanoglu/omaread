@@ -32,6 +32,67 @@
 
 #include "systemtheme.h"
 
+static QString renderArrowCommands(const QString &markdown) {
+    const QString command = QStringLiteral("$\\rightarrow$");
+    QString rendered;
+    rendered.reserve(markdown.size());
+    QChar fence;
+    int fenceLength = 0;
+    int inlineTicks = 0;
+
+    for (const QString &line : markdown.split('\n', Qt::KeepEmptyParts)) {
+        int markerStart = 0;
+        while (markerStart < line.size() && markerStart < 4 && line.at(markerStart) == ' ')
+            ++markerStart;
+        int markerEnd = markerStart;
+        if (markerStart <= 3 && markerStart < line.size()
+                && (line.at(markerStart) == '`' || line.at(markerStart) == '~')) {
+            while (markerEnd < line.size() && line.at(markerEnd) == line.at(markerStart))
+                ++markerEnd;
+        }
+        const int markerLength = markerEnd - markerStart;
+        const bool opensFence = !fenceLength && !inlineTicks && markerLength >= 3;
+        const bool closesFence = fenceLength && markerLength >= fenceLength
+            && line.at(markerStart) == fence && line.mid(markerEnd).trimmed().isEmpty();
+        if (opensFence || closesFence) {
+            if (opensFence) { fence = line.at(markerStart); fenceLength = markerLength; }
+            else fenceLength = 0;
+            rendered += line + '\n';
+            continue;
+        }
+        if (fenceLength) {
+            rendered += line + '\n';
+            continue;
+        }
+
+        for (int i = 0; i < line.size();) {
+            if (line.at(i) == '`') {
+                int end = i + 1;
+                while (end < line.size() && line.at(end) == '`') ++end;
+                const int ticks = end - i;
+                if (!inlineTicks) inlineTicks = ticks;
+                else if (inlineTicks == ticks) inlineTicks = 0;
+                rendered += line.mid(i, ticks);
+                i = end;
+            } else if (!inlineTicks && line.mid(i).startsWith(command)) {
+                int escapes = 0;
+                for (int j = i - 1; j >= 0 && line.at(j) == '\\'; --j) ++escapes;
+                if (escapes % 2 == 0) {
+                    rendered += QChar(0x2192);
+                    i += command.size();
+                    continue;
+                }
+                rendered += line.at(i++);
+            } else {
+                rendered += line.at(i++);
+            }
+        }
+        rendered += '\n';
+    }
+    if (!rendered.isEmpty()) rendered.chop(1);
+    return rendered;
+}
+
 class SearchHighlighter : public QSyntaxHighlighter {
 public:
     explicit SearchHighlighter(QTextDocument *document) : QSyntaxHighlighter(document) {}
@@ -110,14 +171,14 @@ public:
         });
         poller.start(1000);
     }
-    QString content() const { return text; }
+    QString content() const { return renderedText; }
     QString fileName() const { return path.isEmpty() ? QStringLiteral("Open a Markdown file") : QFileInfo(path).fileName(); }
     bool hasFile() const { return !path.isEmpty(); }
     QUrl fileUrl() const { return QUrl::fromLocalFile(path); }
     QString status() const { return message; }
     int wordCount() const {
         QRegularExpression words(QStringLiteral("[\\p{L}\\p{N}]+(?:['-][\\p{L}\\p{N}]+)*"));
-        auto matches = words.globalMatch(text);
+        auto matches = words.globalMatch(renderedText);
         int count = 0;
         while (matches.hasNext()) { matches.next(); ++count; }
         return count;
@@ -174,7 +235,7 @@ public:
         QTextDocument printable;
         printable.setDefaultFont(QFont(chosenFont, 12));
         printable.setBaseUrl(QUrl::fromLocalFile(path));
-        printable.setMarkdown(text);
+        printable.setMarkdown(renderedText);
         printable.print(&printer);
     }
     Q_INVOKABLE void attachDocument(QObject *quickDocument) {
@@ -312,7 +373,7 @@ private:
         path = info.absoluteFilePath();
         stamp = info.lastModified();
         size = info.size();
-        text = fresh;
+        renderedText = renderArrowCommands(fresh);
         message = QStringLiteral("Opened %1").arg(info.fileName());
         emit changed();
         QTimer::singleShot(0, this, [this] { styleDocument(styledPixelSize); });
@@ -365,7 +426,7 @@ private:
         if (QDir(theme).exists()) themeWatcher.addPath(theme);
         if (QFile::exists(colors)) themeWatcher.addPath(colors);
     }
-    QString path, text, message, bg, fg, highlight, select;
+    QString path, renderedText, message, bg, fg, highlight, select;
     QDateTime stamp;
     qint64 size = -1;
     bool dark = true;
