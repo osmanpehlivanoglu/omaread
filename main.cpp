@@ -212,7 +212,7 @@ public:
         QVariantList newMarkers;
         for (QTextBlock block = document->begin(); block.isValid(); block = block.next()) {
             const int headingLevel = block.blockFormat().headingLevel();
-            const qreal headingScale[] = {1.0, 1.70, 1.45, 1.30, 1.18, 1.09, 1.0};
+            const qreal headingScale[] = {1.0, 1.25, 1.20, 1.15, 1.10, 1.05, 1.0};
             const int textSize = headingLevel >= 1 && headingLevel <= 6
                 ? qRound(pixelSize * headingScale[headingLevel]) : pixelSize;
             QTextCursor blockCursor(block);
